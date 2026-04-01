@@ -24,9 +24,9 @@ const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   'o4-mini':                  200_000,
   'o3':                       200_000,
 
-  // DeepSeek
-  'deepseek-chat':             64_000,
-  'deepseek-reasoner':         64_000,
+  // DeepSeek (V3: 128k context per official docs)
+  'deepseek-chat':            128_000,
+  'deepseek-reasoner':        128_000,
 
   // Groq (fast inference)
   'llama-3.3-70b-versatile':  128_000,
