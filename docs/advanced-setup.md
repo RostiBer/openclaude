@@ -69,7 +69,9 @@ export OPENAI_BASE_URL=https://api.deepseek.com/v1
 export OPENAI_MODEL=deepseek-chat
 ```
 
-### Google Gemini via OpenRouter
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai) provides access to Claude, Gemini, DeepSeek, Llama, and many other models via a single OpenAI-compatible API.
 
 ```bash
 export CLAUDE_CODE_USE_OPENAI=1
@@ -78,7 +80,7 @@ export OPENAI_BASE_URL=https://openrouter.ai/api/v1
 export OPENAI_MODEL=google/gemini-2.0-flash-001
 ```
 
-OpenRouter model availability changes over time. If a model stops working, try another current OpenRouter model before assuming the integration is broken.
+You can use any model from [openrouter.ai/models](https://openrouter.ai/models). Model availability changes over time — if a model stops working, check the models page for current options.
 
 ### Ollama
 
