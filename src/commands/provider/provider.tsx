@@ -22,9 +22,11 @@ import {
   buildGeminiProfileEnv,
   buildOllamaProfileEnv,
   buildOpenAIProfileEnv,
+  buildOpenRouterProfileEnv,
   createProfileFile,
   DEFAULT_GEMINI_BASE_URL,
   DEFAULT_GEMINI_MODEL,
+  DEFAULT_OPENROUTER_BASE_URL,
   deleteProfileFile,
   loadProfileFile,
   maskSecretForDisplay,
@@ -63,6 +65,8 @@ type Step =
   | { name: 'gemini-key' }
   | { name: 'gemini-model'; apiKey: string }
   | { name: 'codex-check' }
+  | { name: 'openrouter-key' }
+  | { name: 'openrouter-model'; apiKey: string }
 
 type CurrentProviderSummary = {
   providerLabel: string
@@ -171,6 +175,8 @@ export function buildCurrentProviderSummary(options?: {
       providerLabel = 'Ollama'
     } else if (request.baseUrl.includes('localhost:1234')) {
       providerLabel = 'LM Studio'
+    } else if (request.baseUrl.includes('openrouter.ai')) {
+      providerLabel = 'OpenRouter'
     }
 
     return {
@@ -235,6 +241,24 @@ function buildSavedProfileSummary(
         ),
         credentialLabel:
           maskSecretForDisplay(env.CODEX_API_KEY) !== undefined
+            ? 'configured'
+            : undefined,
+      }
+    case 'open-router':
+      return {
+        providerLabel: 'OpenRouter',
+        modelLabel: getSafeDisplayValue(
+          env.OPENAI_MODEL ?? 'google/gemini-2.0-flash-001',
+          process.env,
+          env,
+        ),
+        endpointLabel: getSafeDisplayValue(
+          env.OPENAI_BASE_URL ?? DEFAULT_OPENROUTER_BASE_URL,
+          process.env,
+          env,
+        ),
+        credentialLabel:
+          maskSecretForDisplay(env.OPENAI_API_KEY) !== undefined
             ? 'configured'
             : undefined,
       }
@@ -428,6 +452,11 @@ function ProviderChooser({
       label: 'Gemini',
       value: 'gemini',
       description: 'Use a Google Gemini API key',
+    },
+    {
+      label: 'OpenRouter',
+      value: 'open-router',
+      description: 'Access Claude, Gemini, DeepSeek, and others via openrouter.ai',
     },
     {
       label: 'Codex',
@@ -923,6 +952,8 @@ function ProviderWizard({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
               })
             } else if (value === 'gemini') {
               setStep({ name: 'gemini-key' })
+            } else if (value === 'open-router') {
+              setStep({ name: 'openrouter-key' })
             } else if (value === 'clear') {
               const filePath = deleteProfileFile()
               onDone(`Removed saved provider profile at ${filePath}. Restart OpenClaude to go back to normal startup.`, {
@@ -1121,6 +1152,59 @@ function ProviderWizard({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
           onSave={(profile, env) => finishProfileSave(onDone, profile, env)}
           onBack={() => setStep({ name: 'choose' })}
           onCancel={() => onDone()}
+        />
+      )
+
+    case 'openrouter-key':
+      return (
+        <TextEntryDialog
+          resetStateKey={step.name}
+          title="OpenRouter setup"
+          subtitle="Step 1 of 2"
+          description={
+            process.env.OPENAI_API_KEY
+              ? 'Enter an OpenRouter API key (sk-or-...), or leave blank to reuse the current OPENAI_API_KEY from this session.'
+              : 'Enter your OpenRouter API key. Get one at https://openrouter.ai/keys.'
+          }
+          initialValue=""
+          placeholder="sk-or-..."
+          mask="*"
+          allowEmpty={Boolean(process.env.OPENAI_API_KEY)}
+          validate={value => {
+            const candidate = value.trim() || process.env.OPENAI_API_KEY || ''
+            return sanitizeApiKey(candidate)
+              ? null
+              : 'Enter a real API key. Placeholder values are not valid.'
+          }}
+          onSubmit={value => {
+            const apiKey = value.trim() || process.env.OPENAI_API_KEY || ''
+            setStep({ name: 'openrouter-model', apiKey })
+          }}
+          onCancel={() => setStep({ name: 'choose' })}
+        />
+      )
+
+    case 'openrouter-model':
+      return (
+        <TextEntryDialog
+          resetStateKey={step.name}
+          title="OpenRouter setup"
+          subtitle="Step 2 of 2"
+          description="Enter a model name. Leave blank for google/gemini-2.0-flash-001. Browse models at https://openrouter.ai/models."
+          initialValue=""
+          placeholder="google/gemini-2.0-flash-001"
+          allowEmpty
+          onSubmit={value => {
+            const env = buildOpenRouterProfileEnv({
+              apiKey: step.apiKey,
+              model: value.trim() || 'google/gemini-2.0-flash-001',
+              processEnv: {},
+            })
+            if (env) {
+              finishProfileSave(onDone, 'open-router', env)
+            }
+          }}
+          onCancel={() => setStep({ name: 'openrouter-key' })}
         />
       )
   }
