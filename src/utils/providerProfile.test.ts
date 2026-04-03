@@ -12,7 +12,9 @@ import {
   buildLaunchEnv,
   buildOllamaProfileEnv,
   buildOpenAIProfileEnv,
+  buildOpenRouterProfileEnv,
   createProfileFile,
+  DEFAULT_OPENROUTER_BASE_URL,
   maskSecretForDisplay,
   loadProfileFile,
   PROFILE_FILE_NAME,
@@ -598,4 +600,88 @@ test('atomic-chat launch ignores mismatched persisted openai env', async () => {
   assert.equal(env.OPENAI_API_KEY, undefined)
   assert.equal(env.CODEX_API_KEY, undefined)
   assert.equal(env.CHATGPT_ACCOUNT_ID, undefined)
+})
+
+test('buildOpenRouterProfileEnv returns null when no api key', () => {
+  const env = buildOpenRouterProfileEnv({ processEnv: {} })
+  assert.equal(env, null)
+})
+
+test('buildOpenRouterProfileEnv sets hardcoded base url and default model', () => {
+  const env = buildOpenRouterProfileEnv({
+    apiKey: 'sk-or-test',
+    processEnv: {},
+  })
+  assert.ok(env)
+  assert.equal(env.OPENAI_BASE_URL, DEFAULT_OPENROUTER_BASE_URL)
+  assert.equal(env.OPENAI_MODEL, 'google/gemini-2.0-flash-001')
+  assert.equal(env.OPENAI_API_KEY, 'sk-or-test')
+})
+
+test('buildOpenRouterProfileEnv uses provided model', () => {
+  const env = buildOpenRouterProfileEnv({
+    apiKey: 'sk-or-test',
+    model: 'anthropic/claude-sonnet-4-5',
+    processEnv: {},
+  })
+  assert.ok(env)
+  assert.equal(env.OPENAI_MODEL, 'anthropic/claude-sonnet-4-5')
+})
+
+test('open-router launch sets CLAUDE_CODE_USE_OPENAI and OpenRouter base url', async () => {
+  const env = await buildLaunchEnv({
+    profile: 'open-router',
+    persisted: profile('open-router', {
+      OPENAI_BASE_URL: DEFAULT_OPENROUTER_BASE_URL,
+      OPENAI_MODEL: 'anthropic/claude-sonnet-4-5',
+      OPENAI_API_KEY: 'sk-or-persisted',
+    }),
+    goal: 'balanced',
+    processEnv: {},
+  })
+
+  assert.equal(env.CLAUDE_CODE_USE_OPENAI, '1')
+  assert.equal(env.OPENAI_BASE_URL, DEFAULT_OPENROUTER_BASE_URL)
+  assert.equal(env.OPENAI_MODEL, 'anthropic/claude-sonnet-4-5')
+  assert.equal(env.OPENAI_API_KEY, 'sk-or-persisted')
+  assert.equal(env.CODEX_API_KEY, undefined)
+  assert.equal(env.CHATGPT_ACCOUNT_ID, undefined)
+  assert.equal(env.CLAUDE_CODE_USE_GEMINI, undefined)
+})
+
+test('open-router launch falls back to default model when no persisted model', async () => {
+  const env = await buildLaunchEnv({
+    profile: 'open-router',
+    persisted: null,
+    goal: 'balanced',
+    processEnv: {
+      OPENAI_API_KEY: 'sk-or-live',
+    },
+  })
+
+  assert.equal(env.CLAUDE_CODE_USE_OPENAI, '1')
+  assert.equal(env.OPENAI_BASE_URL, DEFAULT_OPENROUTER_BASE_URL)
+  assert.equal(env.OPENAI_MODEL, 'google/gemini-2.0-flash-001')
+  assert.equal(env.OPENAI_API_KEY, 'sk-or-live')
+})
+
+test('open-router launch ignores mismatched persisted gemini env', async () => {
+  const env = await buildLaunchEnv({
+    profile: 'open-router',
+    persisted: profile('gemini', {
+      GEMINI_MODEL: 'gemini-2.0-flash',
+      GEMINI_API_KEY: 'gem-persisted',
+    }),
+    goal: 'balanced',
+    processEnv: {
+      OPENAI_API_KEY: 'sk-or-live',
+    },
+  })
+
+  assert.equal(env.CLAUDE_CODE_USE_OPENAI, '1')
+  assert.equal(env.OPENAI_BASE_URL, DEFAULT_OPENROUTER_BASE_URL)
+  assert.equal(env.OPENAI_MODEL, 'google/gemini-2.0-flash-001')
+  assert.equal(env.OPENAI_API_KEY, 'sk-or-live')
+  assert.equal(env.GEMINI_API_KEY, undefined)
+  assert.equal(env.GEMINI_MODEL, undefined)
 })

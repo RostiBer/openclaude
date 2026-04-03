@@ -18,6 +18,7 @@ export const PROFILE_FILE_NAME = '.openclaude-profile.json'
 export const DEFAULT_GEMINI_BASE_URL =
   'https://generativelanguage.googleapis.com/v1beta/openai'
 export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+export const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
 const PROFILE_ENV_KEYS = [
   'CLAUDE_CODE_USE_OPENAI',
@@ -44,7 +45,7 @@ const SECRET_ENV_KEYS = [
   'GOOGLE_API_KEY',
 ] as const
 
-export type ProviderProfile = 'openai' | 'ollama' | 'codex' | 'gemini' | 'atomic-chat'
+export type ProviderProfile = 'openai' | 'ollama' | 'codex' | 'gemini' | 'atomic-chat' | 'open-router'
 
 export type ProfileEnv = {
   OPENAI_BASE_URL?: string
@@ -90,7 +91,8 @@ export function isProviderProfile(value: unknown): value is ProviderProfile {
     value === 'ollama' ||
     value === 'codex' ||
     value === 'gemini' ||
-    value === 'atomic-chat'
+    value === 'atomic-chat' ||
+    value === 'open-router'
   )
 }
 
@@ -306,6 +308,24 @@ export function buildOpenAIProfileEnv(options: {
       ) ||
       (useShellOpenAIConfig ? shellOpenAIModel : undefined) ||
       defaultModel,
+    OPENAI_API_KEY: key,
+  }
+}
+
+export function buildOpenRouterProfileEnv(options: {
+  model?: string | null
+  apiKey?: string | null
+  processEnv?: NodeJS.ProcessEnv
+}): ProfileEnv | null {
+  const processEnv = options.processEnv ?? process.env
+  const key = sanitizeApiKey(options.apiKey ?? processEnv.OPENAI_API_KEY)
+  if (!key) {
+    return null
+  }
+
+  return {
+    OPENAI_BASE_URL: DEFAULT_OPENROUTER_BASE_URL,
+    OPENAI_MODEL: sanitizeProviderConfigValue(options.model, { OPENAI_API_KEY: key }, processEnv) || 'google/gemini-2.0-flash-001',
     OPENAI_API_KEY: key,
   }
 }
@@ -550,6 +570,16 @@ export async function buildLaunchEnv(options: {
     delete env.CHATGPT_ACCOUNT_ID
     delete env.CODEX_ACCOUNT_ID
 
+    return env
+  }
+
+  if (options.profile === 'open-router') {
+    env.OPENAI_BASE_URL = persistedOpenAIBaseUrl || DEFAULT_OPENROUTER_BASE_URL
+    env.OPENAI_MODEL = persistedOpenAIModel || 'google/gemini-2.0-flash-001'
+    env.OPENAI_API_KEY = processEnv.OPENAI_API_KEY || persistedEnv.OPENAI_API_KEY
+    delete env.CODEX_API_KEY
+    delete env.CHATGPT_ACCOUNT_ID
+    delete env.CODEX_ACCOUNT_ID
     return env
   }
 
