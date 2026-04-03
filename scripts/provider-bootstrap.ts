@@ -13,6 +13,7 @@ import {
   buildGeminiProfileEnv,
   buildOllamaProfileEnv,
   buildOpenAIProfileEnv,
+  buildOpenRouterProfileEnv,
   createProfileFile,
   saveProfileFile,
   selectAutoProfile,
@@ -37,7 +38,7 @@ function parseArg(name: string): string | null {
 
 function parseProviderArg(): ProviderProfile | 'auto' {
   const p = parseArg('--provider')?.toLowerCase()
-  if (p === 'openai' || p === 'ollama' || p === 'codex' || p === 'gemini' || p === 'atomic-chat') return p
+  if (p === 'openai' || p === 'ollama' || p === 'codex' || p === 'gemini' || p === 'atomic-chat' || p === 'open-router') return p
   return 'auto'
 }
 
@@ -120,6 +121,19 @@ async function main(): Promise<void> {
       baseUrl: argBaseUrl,
       getAtomicChatChatBaseUrl,
     })
+  } else if (selected === 'open-router') {
+    const builtEnv = buildOpenRouterProfileEnv({
+      model: argModel || null,
+      apiKey: argApiKey || process.env.OPENAI_API_KEY || null,
+      processEnv: process.env,
+    })
+
+    if (!builtEnv) {
+      console.error('OpenRouter profile requires a real API key. Use --api-key or set OPENAI_API_KEY.')
+      process.exit(1)
+    }
+
+    env = builtEnv
   } else if (selected === 'codex') {
     const builtEnv = buildCodexProfileEnv({
       model: argModel,

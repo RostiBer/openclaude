@@ -22,6 +22,7 @@
     "dev:ollama": "bun run scripts/provider-launch.ts ollama",
     "dev:ollama:fast": "bun run scripts/provider-launch.ts ollama --fast --bare",
     "dev:atomic-chat": "bun run scripts/provider-launch.ts atomic-chat",
+    "dev:open-router": "bun run scripts/provider-launch.ts open-router",
     "profile:init": "bun run scripts/provider-bootstrap.ts",
     "profile:recommend": "bun run scripts/provider-recommend.ts",
     "profile:auto": "bun run scripts/provider-recommend.ts --apply",
